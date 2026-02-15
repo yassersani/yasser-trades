@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trade Journal</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input, select, textarea, button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #333;
+            color: #fff;
+        }
+        button {
+            background: #4CAF50;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #555;
+        }
+        th {
+            background: #444;
+        }
+        .delete-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        @media (max-width: 600px) {
+            form {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Trade Journal</h1>
+        <form id="tradeForm">
+            <input type="date" id="date" required>
+            <input type="text" id="symbol" placeholder="Symbol (e.g., AAPL)" required>
+            <select id="type" required>
+                <option value="">Select Type</option>
+                <option value="buy">Buy</option>
+                <option value="sell">Sell</option>
+            </select>
+            <input type="number" id="quantity" placeholder="Quantity" required>
+            <input type="number" step="0.01" id="price" placeholder="Price" required>
+            <textarea id="notes" placeholder="Notes" rows="2"></textarea>
+            <button type="submit">Add Trade</button>
+        </form>
+        <table id="journalTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Symbol</th>
+                    <th>Type</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Profit/Loss</th>
+                    <th>Notes</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <script>
+        const form = document.getElementById('tradeForm');
+        const tableBody = document.querySelector('#journalTable tbody');
+        let trades = JSON.parse(localStorage.getItem('trades')) || [];
+
+        function renderTrades() {
+            tableBody.innerHTML = '';
+            trades.forEach((trade, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${trade.date}</td>
+                    <td>${trade.symbol}</td>
+                    <td>${trade.type}</td>
+                    <td>${trade.quantity}</td>
+                    <td>${trade.price}</td>
+                    <td>${trade.profitLoss || 'N/A'}</td>
+                    <td>${trade.notes}</td>
+                    <td><button class="delete-btn" onclick="deleteTrade(${index})">Delete</button></td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function calculateProfitLoss() {
+            // Simple calculation: assumes pairs of buy/sell for same symbol
+            const grouped = {};
+            trades.forEach(trade => {
+                if (!grouped[trade.symbol]) grouped[trade.symbol] = [];
+                grouped[trade.symbol].push(trade);
+            });
+            trades.forEach(trade => {
+                if (trade.type === 'sell') {
+                    const buys = grouped[trade.symbol].filter(t => t.type === 'buy');
+                    if (buys.length) {
+                        const buyPrice = buys[0].price; // Simplest: use first buy
+                        trade.profitLoss = ((trade.price - buyPrice) * trade.quantity).toFixed(2);
+                    }
+                }
+            });
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const trade = {
+                date: document.getElementById('date').value,
+                symbol: document.getElementById('symbol').value.toUpperCase(),
+                type: document.getElementById('type').value,
+                quantity: parseInt(document.getElementById('quantity').value),
+                price: parseFloat(document.getElementById('price').value),
+                notes: document.getElementById('notes').value
+            };
+            trades.push(trade);
+            calculateProfitLoss();
+            localStorage.setItem('trades', JSON.stringify(trades));
+            renderTrades();
+            form.reset();
+        });
+
+        function deleteTrade(index) {
+            trades.splice(index, 1);
+            calculateProfitLoss();
+            localStorage.setItem('trades', JSON.stringify(trades));
+            renderTrades();
+        }
+
+        renderTrades();
+    </script>
+</body>
+</html>
